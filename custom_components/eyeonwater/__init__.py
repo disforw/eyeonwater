@@ -24,7 +24,6 @@ from .const import (
 from .coordinator import EyeOnWaterData
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.addHandler(logging.StreamHandler())
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
@@ -33,6 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Eye On Water from a config entry."""
     account = create_account_from_config(hass, entry.data)
     eye_on_water_data = EyeOnWaterData(hass, account)
+    
     try:
         await eye_on_water_data.client.authenticate()
     except EyeOnWaterAuthError:
@@ -45,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await eye_on_water_data.setup()
     except Exception:
         _LOGGER.exception("Fetching meters failed")
-        raise
+        return False
 
     async def async_update_data():
         _LOGGER.debug("Fetching latest data")
@@ -72,8 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_SMART_METER: eye_on_water_data,
     }
 
-    _ = asyncio.create_task(coordinator.async_refresh())
-
+    await coordinator.async_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def async_service_handler(call):
